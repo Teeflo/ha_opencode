@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.0.6
+
+**Documentation**
+
+- Added LICENSE file (MIT License)
+- Added repository README.md with installation instructions
+- Cleaned up CHANGELOG to match repository history
+
 ## 1.0.5
 
 **Improvements**
