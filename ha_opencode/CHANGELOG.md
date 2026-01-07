@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.0.7
+
+**New Feature**
+
+- Added AGENTS.md customization feature
+  - Default AGENTS.md file deployed to Home Assistant config directory on first install
+  - Contains AI instructions and rules for OpenCode behavior
+  - Users can customize AGENTS.md to add their own rules, preferences, and context
+  - Edit `/config/AGENTS.md` using File Editor or any text editor
+  - Includes user consent rules, Home Assistant knowledge, safety guidelines, and MCP awareness
+
 ## 1.0.6
 
 **Documentation**
