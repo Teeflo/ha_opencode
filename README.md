@@ -35,7 +35,11 @@ OpenCode supports **75+ AI providers** including:
 | **xAI** | Grok models |
 | **Deepseek** | Deepseek Coder, Deepseek Chat |
 
-You can also use **OpenCode Zen** - a curated selection of models optimized specifically for coding tasks.
+### Free Tier - OpenCode Zen
+
+OpenCode includes **OpenCode Zen**, a free tier that lets you get started without any API keys or subscriptions. Zen provides access to curated models optimized for coding tasks - perfect for trying out HA OpenCode or for users who don't want to manage their own API keys.
+
+To use the free tier, simply run `/connect` and select **OpenCode Zen** as your provider.
 
 ## About This Add-on
 
