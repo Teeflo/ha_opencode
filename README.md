@@ -1,9 +1,9 @@
 # Home Assistant Add-on: HA OpenCode
 
-[![License][license-shield]](LICENSE)
+![Version][version-shield]
 ![Project Stage][project-stage-shield]
+[![License][license-shield]](LICENSE)
 ![Maintenance][maintenance-shield]
-
 ![Supports aarch64 Architecture][aarch64-shield]
 ![Supports amd64 Architecture][amd64-shield]
 
@@ -82,10 +82,6 @@ This add-on has **read/write access** to your Home Assistant configuration direc
 
 ### &#10003; [HA OpenCode][addon-ha-opencode]
 
-![Latest Version][ha-opencode-version-shield]
-![Supports aarch64][aarch64-shield]
-![Supports amd64][amd64-shield]
-
 AI coding agent for editing Home Assistant configuration with intelligent YAML assistance.
 
 [:books: HA OpenCode documentation][addon-doc-ha-opencode]
@@ -124,9 +120,9 @@ MIT License - see [LICENSE](LICENSE) for details.
 [repo-add]: https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmagnusoverli%2Fha_opencode
 [repo-btn]: https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg
 
+[version-shield]: https://img.shields.io/badge/version-v1.0.9-blue.svg
+[project-stage-shield]: https://img.shields.io/badge/project%20stage-experimental-orange.svg
 [license-shield]: https://img.shields.io/github/license/magnusoverli/ha_opencode.svg
 [maintenance-shield]: https://img.shields.io/maintenance/yes/2026.svg
-[project-stage-shield]: https://img.shields.io/badge/project%20stage-experimental-orange.svg
-[ha-opencode-version-shield]: https://img.shields.io/badge/version-v1.0.9-blue.svg
 [aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
 [amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
