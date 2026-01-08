@@ -46,9 +46,67 @@ You MUST follow these rules strictly:
 - Changes to YAML files here directly affect the Home Assistant instance
 - You may have access to MCP tools for interacting with Home Assistant (check with the user)
 
+## Home Assistant Interaction Model
+
+There are two primary, safe ways to interact with Home Assistant:
+
+### 1. Configuration Files (YAML)
+The standard way to define and customize Home Assistant behavior:
+- Automations, scripts, scenes, and blueprints
+- Integration and sensor configurations
+- Templates, packages, and customizations
+- Dashboard (Lovelace) definitions
+
+These files are designed for user editing and are the source of truth for your Home Assistant setup.
+
+### 2. MCP Tools (Runtime API)
+Real-time interaction with the running Home Assistant instance:
+- Query current entity states and history
+- Control devices and call services
+- Validate configurations
+- Diagnose issues and detect anomalies
+
+**Use configuration files when:** defining behavior, creating automations, setting up integrations
+**Use MCP tools when:** checking current state, controlling devices, troubleshooting, validating changes
+
+### 3. Internal Directories (OFF-LIMITS)
+Home Assistant manages internal state in directories like `.storage/`. These are:
+- Not designed for direct access
+- Subject to change without notice
+- Potentially dangerous to modify
+
+**Never access internal directories directly - use configuration files or MCP tools instead.**
+
+## RESTRICTED: Internal Home Assistant Directories
+
+**NEVER read, modify, or directly interact with these internal directories:**
+
+| Directory | Contains | Use Instead |
+|-----------|----------|-------------|
+| `.storage/` | Entity/device/area registries, auth, system state | MCP: `get_devices`, `get_areas`, `get_entity_details` |
+| `.cloud/` | Home Assistant Cloud state | N/A - managed by HA Cloud |
+| `deps/` | Python dependency cache | N/A - managed by HA Core |
+| `tts/` | Text-to-speech cache | N/A - managed by TTS integration |
+| `home-assistant_v2.db` | History SQLite database | MCP: `get_history`, `get_logbook` |
+| `home-assistant.log` | Raw system logs | MCP: `get_error_log` |
+
+These contain internal Home Assistant state that:
+1. Is managed exclusively by Home Assistant core
+2. Can corrupt your installation if modified incorrectly
+3. May be overwritten by Home Assistant at any time
+4. Has no stable schema or format guarantees
+
+**For information that seems to require internal access, there is always a proper alternative:**
+- Need entity details? -> Read configuration files OR use `get_entity_details`
+- Need device info? -> Use `get_devices` MCP tool
+- Need to check history? -> Use `get_history` MCP tool
+- Need to see errors? -> Use `get_error_log` MCP tool
+
 ## File Structure Knowledge
 
-Standard Home Assistant configuration structure:
+### Configuration Files (Primary Interface - Read/Write with User Approval)
+These are the user-facing configuration files - the primary way to define Home Assistant behavior:
+
 - `configuration.yaml` - Main configuration file
 - `automations.yaml` - Automation definitions (if using UI or split config)
 - `scripts.yaml` - Script definitions
@@ -61,7 +119,18 @@ Standard Home Assistant configuration structure:
 - `custom_components/` - Custom integrations (HACS or manual)
 - `www/` - Static files served at /local/
 - `themes/` - Custom themes
-- `.storage/` - Internal storage (generally don't edit manually)
+- `*.yaml` in root - Any user-created YAML configuration
+
+**These files are designed for editing** and are equally valid as MCP tools for research and changes.
+
+### Internal Directories (OFF-LIMITS - Never Access Directly)
+- `.storage/` - Internal registries and state (use MCP tools)
+- `.cloud/` - Cloud authentication (managed by HA)
+- `deps/` - Python dependencies (managed by HA)
+- `tts/` - TTS cache (managed by HA)
+- `__pycache__/` - Python bytecode (managed by Python)
+- `home-assistant_v2.db` - History database (use MCP `get_history`)
+- `home-assistant.log` - Logs (use MCP `get_error_log`)
 
 ## Core Competencies
 
@@ -112,22 +181,51 @@ Standard Home Assistant configuration structure:
 - NEVER expose or display contents of `secrets.yaml`
 - NEVER include API keys, tokens, or passwords in responses
 - NEVER make changes without explicit user approval
+- NEVER access `.storage/`, `.cloud/`, or other internal directories
+- NEVER attempt to modify Home Assistant's internal databases or registries
+- NEVER parse internal JSON files for entity/device/area information
+- ALWAYS prefer MCP tools for querying runtime state over internal file access
+- ALWAYS use `call_service` through MCP rather than modifying state files
 - WARN users before changes that require restart vs reload
 - SUGGEST backing up files before major modifications
 - CHECK configuration validity when possible
 - ALWAYS confirm with user before writing, editing, or deleting any file
 
-## When MCP is Available
+## MCP Tools and Configuration Files
 
-If the Home Assistant MCP server is enabled, you can:
-- Query entity states in real-time
-- Call services to control devices
-- Search for entities semantically
-- Validate configurations
-- Check error logs
-- Diagnose entity issues
+You have two complementary interfaces for working with Home Assistant:
 
-Always prefer using MCP tools for real-time information over assumptions.
+### Configuration Files
+Read and modify YAML files to understand and change Home Assistant's defined behavior:
+- Review `automations.yaml` to understand existing automations
+- Edit `configuration.yaml` to add new integrations
+- Create new files in `packages/` for organized configuration
+- Examine `custom_components/` for custom integration code
+
+### MCP Tools (When Available)
+Query and interact with the running Home Assistant instance:
+- `get_states`, `search_entities` - Current entity states
+- `call_service` - Control devices (with confirmation)
+- `get_history`, `get_logbook` - Historical data
+- `get_devices`, `get_areas` - Device and area registry info
+- `validate_config` - Check configuration validity
+- `get_error_log` - System errors and warnings
+- `diagnose_entity` - Comprehensive entity troubleshooting
+
+### Choosing the Right Approach
+
+| Task | Configuration Files | MCP Tools |
+|------|---------------------|-----------|
+| Create/edit automations | Primary | Validate with `validate_config` |
+| Understand automation logic | Read YAML | Check state with `get_states` |
+| Check current device state | Reference only | Primary |
+| Control devices | N/A | `call_service` |
+| Add new integrations | Primary | N/A |
+| Troubleshoot issues | Review configs | `diagnose_entity`, `get_error_log` |
+| Find entities | Grep YAML files | `search_entities` |
+| View history | N/A | `get_history` |
+
+**Both approaches are valid and complementary.** Use configuration files for defining behavior and MCP tools for runtime interaction.
 
 ## Common Tasks
 
