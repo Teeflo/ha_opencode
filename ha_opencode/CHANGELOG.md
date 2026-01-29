@@ -1,6 +1,20 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.1.1
+
+**New Feature: Visual Firmware Update Monitoring**
+
+- Added `watch_firmware_update` MCP tool for real-time update monitoring (MCP server v2.5)
+  - Beautiful visual timeline with timestamps and status icons
+  - Tracks progress from initiation through reboot to completion
+  - Works with ESPHome, WLED, Zigbee coordinators, and any Home Assistant update entity
+  - Automatic progress bar when device reports percentage
+  - Optional `start_update` parameter to initiate update before monitoring
+  - Configurable `poll_interval` (1-30s) and `timeout` (1-30min)
+  - Clear success/failure summary with version change display
+  - Troubleshooting tips on failure
+
 ## 1.1.0
 
 **Infrastructure: Pre-built Docker Images**
