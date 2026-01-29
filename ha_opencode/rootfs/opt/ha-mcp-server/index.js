@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Home Assistant MCP Server for OpenCode (Documentation Edition v2.2)
+ * Home Assistant MCP Server for OpenCode (Update Management Edition v2.3)
  * 
  * A cutting-edge MCP server providing deep integration with Home Assistant.
  * Implements the latest MCP specification (2025-06-18) features:
@@ -14,14 +14,16 @@
  * - Live documentation fetching
  * - Breaking changes awareness
  * - Deprecation pattern detection
+ * - Real-time update progress monitoring
  * 
- * TOOLS (22):
+ * TOOLS (27):
  * - Entity state management (get, search, history)
  * - Service calls with intelligent targeting
  * - Configuration validation and management
  * - Calendar, logbook, and history access
  * - Anomaly detection and suggestions
  * - Documentation fetching and syntax checking
+ * - Update management with real-time progress monitoring
  * 
  * RESOURCES (9 + 4 templates):
  * - Live entity states by domain
@@ -169,6 +171,43 @@ async function callHACore(endpoint, method = "GET", body = null) {
     const result = await response.json();
     sendLog("debug", "ha-core-api", { action: "response", endpoint, success: true });
     return result;
+  }
+  return response.text();
+}
+
+/**
+ * Call Home Assistant Supervisor API directly
+ * Used for add-on management, updates, jobs, and system operations
+ */
+async function callSupervisor(endpoint, method = "GET", body = null) {
+  sendLog("debug", "supervisor-api", { action: "request", endpoint, method });
+  
+  const options = {
+    method,
+    headers: {
+      "Authorization": `Bearer ${SUPERVISOR_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+  };
+
+  if (body) {
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(`http://supervisor${endpoint}`, options);
+  
+  if (!response.ok) {
+    const text = await response.text();
+    sendLog("error", "supervisor-api", { action: "error", endpoint, status: response.status, error: text });
+    throw new Error(`Supervisor API error (${response.status}): ${text}`);
+  }
+
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    const result = await response.json();
+    sendLog("debug", "supervisor-api", { action: "response", endpoint, success: true });
+    // Supervisor API wraps data in { result: "ok", data: {...} }
+    return result.data !== undefined ? result.data : result;
   }
   return response.text();
 }
@@ -1595,6 +1634,107 @@ const PROMPTS = [
       { name: "wake_time", description: "Usual wake-up time (e.g., '7:00 AM')", required: false },
     ],
   },
+  
+  // === UPDATE MANAGEMENT ===
+  {
+    name: "get_available_updates",
+    title: "Get Available Updates",
+    description: "Check for available updates across Home Assistant Core, OS, Supervisor, and all installed apps. Returns version info and update status for each component.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        component: {
+          type: "string",
+          enum: ["all", "core", "os", "supervisor", "addons"],
+          description: "Which component to check (default: 'all')",
+        },
+      },
+    },
+    annotations: {
+      readOnly: true,
+      idempotent: true,
+    },
+  },
+  {
+    name: "get_addon_changelog",
+    title: "Get App Changelog",
+    description: "Get the changelog for an installed app to see what changes are included in updates.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        addon_slug: {
+          type: "string",
+          description: "The slug identifier of the app (e.g., 'core_configurator', 'a]0d7b954_vscode')",
+        },
+      },
+      required: ["addon_slug"],
+    },
+    annotations: {
+      readOnly: true,
+      idempotent: true,
+    },
+  },
+  {
+    name: "update_component",
+    title: "Update Component",
+    description: "Initiate an update for a Home Assistant component (Core, OS, Supervisor) or an app. Returns a job_id for progress monitoring. NOTE: Cannot update HA OpenCode itself from within - use Home Assistant UI for self-updates.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        component: {
+          type: "string",
+          enum: ["core", "os", "supervisor", "addon"],
+          description: "Type of component to update",
+        },
+        addon_slug: {
+          type: "string",
+          description: "Required if component is 'addon' - the app's slug identifier",
+        },
+        backup: {
+          type: "boolean",
+          description: "Create a backup before updating (default: true for core/addons)",
+        },
+      },
+      required: ["component"],
+    },
+    annotations: {
+      readOnly: false,
+      destructive: false,
+      idempotent: false,
+    },
+  },
+  {
+    name: "get_update_progress",
+    title: "Get Update Progress",
+    description: "Monitor the progress of a running update job. Poll this endpoint to get real-time progress updates including percentage, current stage, and completion status.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        job_id: {
+          type: "string",
+          description: "The job UUID returned when initiating an update",
+        },
+      },
+      required: ["job_id"],
+    },
+    annotations: {
+      readOnly: true,
+      idempotent: true,
+    },
+  },
+  {
+    name: "get_running_jobs",
+    title: "Get Running Jobs",
+    description: "List all currently running or recently completed Supervisor jobs. Useful for monitoring ongoing operations like updates, backups, or restores.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+    annotations: {
+      readOnly: true,
+      idempotent: true,
+    },
+  },
 ];
 
 // ============================================================================
@@ -2275,6 +2415,300 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return makeCompatibleResponse({
           content: [createTextContent(responseText, { audience: ["assistant"], priority: 0.9 })],
         });
+      }
+
+      // === UPDATE MANAGEMENT ===
+      case "get_available_updates": {
+        const component = args?.component || "all";
+        sendLog("info", "updates", { action: "check_updates", component });
+        
+        const updates = [];
+        
+        // Get Core info
+        if (component === "all" || component === "core") {
+          try {
+            const coreInfo = await callSupervisor("/core/info");
+            updates.push({
+              type: "core",
+              name: "Home Assistant Core",
+              installed: coreInfo.version,
+              latest: coreInfo.version_latest,
+              update_available: coreInfo.update_available,
+            });
+          } catch (e) {
+            sendLog("warning", "updates", { action: "core_check_failed", error: e.message });
+          }
+        }
+        
+        // Get OS info (only on HAOS)
+        if (component === "all" || component === "os") {
+          try {
+            const osInfo = await callSupervisor("/os/info");
+            if (osInfo.version) {
+              updates.push({
+                type: "os",
+                name: "Home Assistant OS",
+                installed: osInfo.version,
+                latest: osInfo.version_latest,
+                update_available: osInfo.update_available,
+              });
+            }
+          } catch (e) {
+            // OS info not available on supervised installs
+            sendLog("debug", "updates", { action: "os_not_available" });
+          }
+        }
+        
+        // Get Supervisor info
+        if (component === "all" || component === "supervisor") {
+          try {
+            const supInfo = await callSupervisor("/supervisor/info");
+            updates.push({
+              type: "supervisor",
+              name: "Home Assistant Supervisor",
+              installed: supInfo.version,
+              latest: supInfo.version_latest,
+              update_available: supInfo.update_available,
+            });
+          } catch (e) {
+            sendLog("warning", "updates", { action: "supervisor_check_failed", error: e.message });
+          }
+        }
+        
+        // Get add-on updates
+        if (component === "all" || component === "addons") {
+          try {
+            const addonsInfo = await callSupervisor("/addons");
+            const installedAddons = addonsInfo.addons.filter(a => a.installed);
+            
+            for (const addon of installedAddons) {
+              updates.push({
+                type: "addon",
+                slug: addon.slug,
+                name: addon.name,
+                installed: addon.version,
+                latest: addon.version_latest,
+                update_available: addon.update_available,
+              });
+            }
+          } catch (e) {
+            sendLog("warning", "updates", { action: "addons_check_failed", error: e.message });
+          }
+        }
+        
+        // Format output
+        const pendingUpdates = updates.filter(u => u.update_available);
+        let responseText = `# Available Updates\n\n`;
+        responseText += `**Checked:** ${new Date().toISOString()}\n`;
+        responseText += `**Updates Available:** ${pendingUpdates.length}\n\n`;
+        
+        if (pendingUpdates.length > 0) {
+          responseText += `## Pending Updates\n\n`;
+          for (const u of pendingUpdates) {
+            responseText += `- **${u.name}** ${u.type === 'addon' ? `(${u.slug})` : ''}: ${u.installed} → ${u.latest}\n`;
+          }
+          responseText += `\n`;
+        }
+        
+        responseText += `## All Components\n\n`;
+        responseText += `| Component | Type | Installed | Latest | Update |\n`;
+        responseText += `|-----------|------|-----------|--------|--------|\n`;
+        for (const u of updates) {
+          responseText += `| ${u.name} | ${u.type} | ${u.installed} | ${u.latest} | ${u.update_available ? '⬆️ Yes' : '✓ Current'} |\n`;
+        }
+        
+        return makeCompatibleResponse({
+          content: [createTextContent(responseText, { audience: ["user", "assistant"], priority: 0.9 })],
+        });
+      }
+
+      case "get_addon_changelog": {
+        const { addon_slug } = args;
+        sendLog("info", "updates", { action: "get_changelog", addon: addon_slug });
+        
+        try {
+          // Get add-on info first
+          const addonInfo = await callSupervisor(`/addons/${addon_slug}/info`);
+          const changelog = await callSupervisor(`/addons/${addon_slug}/changelog`);
+          
+          let responseText = `# Changelog: ${addonInfo.name}\n\n`;
+          responseText += `**Current Version:** ${addonInfo.version}\n`;
+          responseText += `**Latest Version:** ${addonInfo.version_latest}\n`;
+          responseText += `**Update Available:** ${addonInfo.update_available ? 'Yes' : 'No'}\n\n`;
+          responseText += `---\n\n`;
+          responseText += changelog;
+          
+          return makeCompatibleResponse({
+            content: [createTextContent(responseText, { audience: ["user", "assistant"], priority: 0.8 })],
+          });
+        } catch (e) {
+          throw new Error(`Failed to get changelog for '${addon_slug}': ${e.message}`);
+        }
+      }
+
+      case "update_component": {
+        const { component, addon_slug, backup = true } = args;
+        sendLog("notice", "updates", { action: "initiate_update", component, addon_slug, backup });
+        
+        // Prevent self-update
+        if (component === "addon" && addon_slug === "local_ha_opencode") {
+          throw new Error("Cannot update HA OpenCode from within itself. The container will be stopped during update. Please use the Home Assistant UI to update this app.");
+        }
+        
+        let endpoint;
+        let payload = { background: true };
+        let componentName;
+        
+        switch (component) {
+          case "core":
+            endpoint = "/core/update";
+            payload.backup = backup;
+            componentName = "Home Assistant Core";
+            break;
+          case "os":
+            endpoint = "/os/update";
+            componentName = "Home Assistant OS";
+            break;
+          case "supervisor":
+            endpoint = "/supervisor/update";
+            componentName = "Supervisor";
+            break;
+          case "addon":
+            if (!addon_slug) {
+              throw new Error("addon_slug is required when component is 'addon'");
+            }
+            endpoint = `/store/addons/${addon_slug}/update`;
+            payload.backup = backup;
+            componentName = addon_slug;
+            break;
+          default:
+            throw new Error(`Unknown component type: ${component}`);
+        }
+        
+        try {
+          const result = await callSupervisor(endpoint, "POST", payload);
+          
+          // Background mode returns job_id
+          const jobId = result?.job_id || result;
+          
+          let responseText = `# Update Initiated\n\n`;
+          responseText += `**Component:** ${componentName}\n`;
+          responseText += `**Job ID:** ${jobId}\n`;
+          responseText += `**Backup:** ${backup ? 'Yes' : 'No'}\n\n`;
+          responseText += `## Monitor Progress\n\n`;
+          responseText += `Use \`get_update_progress\` with job_id \`${jobId}\` to monitor the update.\n\n`;
+          responseText += `**Example:** \`get_update_progress({ job_id: "${jobId}" })\`\n`;
+          
+          return makeCompatibleResponse({
+            content: [createTextContent(responseText, { audience: ["user", "assistant"], priority: 1.0 })],
+          });
+        } catch (e) {
+          throw new Error(`Failed to initiate update for ${componentName}: ${e.message}`);
+        }
+      }
+
+      case "get_update_progress": {
+        const { job_id } = args;
+        sendLog("debug", "updates", { action: "check_progress", job_id });
+        
+        try {
+          const job = await callSupervisor(`/jobs/${job_id}`);
+          
+          let statusEmoji;
+          if (job.done) {
+            statusEmoji = job.errors ? "❌" : "✅";
+          } else {
+            statusEmoji = "⏳";
+          }
+          
+          let responseText = `# Job Progress: ${job_id}\n\n`;
+          responseText += `**Status:** ${statusEmoji} ${job.done ? (job.errors ? 'Failed' : 'Completed') : 'In Progress'}\n`;
+          responseText += `**Name:** ${job.name}\n`;
+          responseText += `**Progress:** ${job.progress || 0}%\n`;
+          
+          if (job.stage) {
+            responseText += `**Stage:** ${job.stage}\n`;
+          }
+          
+          if (job.reference) {
+            responseText += `**Reference:** ${job.reference}\n`;
+          }
+          
+          responseText += `\n`;
+          
+          // Progress bar visualization
+          const progressBar = "█".repeat(Math.floor((job.progress || 0) / 5)) + "░".repeat(20 - Math.floor((job.progress || 0) / 5));
+          responseText += `**[${progressBar}] ${job.progress || 0}%**\n\n`;
+          
+          if (job.child_jobs && job.child_jobs.length > 0) {
+            responseText += `## Sub-tasks\n\n`;
+            for (const child of job.child_jobs) {
+              const childStatus = child.done ? (child.errors ? "❌" : "✅") : "⏳";
+              responseText += `- ${childStatus} ${child.name}: ${child.progress || 0}%\n`;
+            }
+            responseText += `\n`;
+          }
+          
+          if (job.errors) {
+            responseText += `## Errors\n\n`;
+            responseText += `\`\`\`\n${JSON.stringify(job.errors, null, 2)}\n\`\`\`\n`;
+          }
+          
+          if (!job.done) {
+            responseText += `---\n\n*Poll again in a few seconds to see updated progress.*\n`;
+          }
+          
+          return makeCompatibleResponse({
+            content: [createTextContent(responseText, { audience: ["user", "assistant"], priority: 0.9 })],
+          });
+        } catch (e) {
+          throw new Error(`Failed to get job progress: ${e.message}`);
+        }
+      }
+
+      case "get_running_jobs": {
+        sendLog("debug", "updates", { action: "list_jobs" });
+        
+        try {
+          const jobsInfo = await callSupervisor("/jobs/info");
+          const jobs = jobsInfo.jobs || [];
+          
+          let responseText = `# Supervisor Jobs\n\n`;
+          responseText += `**Total Jobs:** ${jobs.length}\n\n`;
+          
+          if (jobs.length === 0) {
+            responseText += `*No running or recent jobs found.*\n`;
+          } else {
+            const runningJobs = jobs.filter(j => !j.done);
+            const completedJobs = jobs.filter(j => j.done);
+            
+            if (runningJobs.length > 0) {
+              responseText += `## Running Jobs\n\n`;
+              responseText += `| Job ID | Name | Progress | Stage |\n`;
+              responseText += `|--------|------|----------|-------|\n`;
+              for (const job of runningJobs) {
+                responseText += `| ${job.uuid.substring(0, 8)}... | ${job.name} | ${job.progress || 0}% | ${job.stage || '-'} |\n`;
+              }
+              responseText += `\n`;
+            }
+            
+            if (completedJobs.length > 0) {
+              responseText += `## Completed Jobs\n\n`;
+              responseText += `| Job ID | Name | Status |\n`;
+              responseText += `|--------|------|--------|\n`;
+              for (const job of completedJobs.slice(0, 10)) {
+                const status = job.errors ? "❌ Failed" : "✅ Success";
+                responseText += `| ${job.uuid.substring(0, 8)}... | ${job.name} | ${status} |\n`;
+              }
+            }
+          }
+          
+          return makeCompatibleResponse({
+            content: [createTextContent(responseText, { audience: ["user", "assistant"], priority: 0.7 })],
+          });
+        } catch (e) {
+          throw new Error(`Failed to list jobs: ${e.message}`);
+        }
       }
 
       default:

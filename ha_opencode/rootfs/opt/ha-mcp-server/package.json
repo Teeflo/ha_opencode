@@ -1,7 +1,7 @@
 {
   "name": "ha-mcp-server",
-  "version": "2.1.0",
-  "description": "Enhanced Home Assistant MCP server with Tools, Resources, Prompts, and Intelligence Layer",
+  "version": "2.3.0",
+  "description": "Enhanced Home Assistant MCP server with Tools, Resources, Prompts, Update Management, and Intelligence Layer",
   "type": "module",
   "main": "index.js",
   "scripts": {
