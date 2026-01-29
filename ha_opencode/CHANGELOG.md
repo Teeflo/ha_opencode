@@ -1,6 +1,15 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.1.2-1
+
+**Documentation: Update Management Instructions**
+
+- Added update management section to INSTRUCTIONS.md and AGENTS.md
+- AI assistants now properly use `watch_firmware_update` for device updates
+- Documented `get_available_updates`, `update_component`, and `get_update_progress` tools
+- Added example patterns for firmware and system updates
+
 ## 1.1.2
 
 **Build Fix: Prevent Update Race Condition**

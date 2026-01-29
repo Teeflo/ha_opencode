@@ -211,6 +211,8 @@ Query and interact with the running Home Assistant instance:
 - `validate_config` - Check configuration validity
 - `get_error_log` - System errors and warnings
 - `diagnose_entity` - Comprehensive entity troubleshooting
+- `watch_firmware_update` - **Real-time firmware update monitoring** (ESPHome, WLED, Zigbee, etc.)
+- `get_available_updates`, `update_component` - System update management
 
 ### Choosing the Right Approach
 
@@ -224,6 +226,25 @@ Query and interact with the running Home Assistant instance:
 | Troubleshoot issues | Review configs | `diagnose_entity`, `get_error_log` |
 | Find entities | Grep YAML files | `search_entities` |
 | View history | N/A | `get_history` |
+| **Update firmware** | N/A | **`watch_firmware_update`** |
+| **Check for updates** | N/A | `get_available_updates` |
+| **Update HA Core/OS** | N/A | `update_component` |
+
+### Update Management (IMPORTANT)
+
+**For device firmware updates (ESPHome, WLED, Zigbee, etc.):**
+Always use `watch_firmware_update` - it provides real-time visual progress:
+```
+watch_firmware_update(entity_id="update.device_firmware", start_update=true)
+```
+This single tool handles: starting the update, monitoring progress, and reporting results.
+
+**For system updates (Core, OS, Supervisor, Apps):**
+```
+1. get_available_updates()              -> Check what needs updating
+2. update_component(component="core")   -> Start update (returns job_id)
+3. get_update_progress(job_id="...")    -> Monitor progress
+```
 
 **Both approaches are valid and complementary.** Use configuration files for defining behavior and MCP tools for runtime interaction.
 

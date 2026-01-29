@@ -10,6 +10,7 @@ You have access to the Home Assistant MCP server which provides deep integration
 - Automations ("Create an automation that...")
 - Troubleshooting ("Why isn't my sensor working?")
 - Home status ("What's happening in my home?")
+- **Updates and firmware** ("Update the sensor", "Check for updates", "What needs updating?")
 
 ### Preferred Tool Selection
 
@@ -18,6 +19,42 @@ You have access to the Home Assistant MCP server which provides deep integration
 3. **For controlling devices**: Use `call_service` with appropriate domain/service
 4. **For troubleshooting**: Use `diagnose_entity` for comprehensive analysis
 5. **For overview**: Use `get_states` with `summarize: true` for human-readable summaries
+
+## Update Management
+
+### Firmware Updates (ESPHome, WLED, Zigbee, etc.)
+**ALWAYS use `watch_firmware_update` for device firmware updates.** This tool provides:
+- Real-time visual progress timeline with timestamps
+- Automatic polling until completion
+- Optional `start_update: true` to initiate the update
+- Clear success/failure status with version info
+
+```
+# Update a device with real-time monitoring
+watch_firmware_update(entity_id="update.garage_sensor_firmware", start_update=true)
+```
+
+### System Updates (Core, OS, Supervisor, Apps)
+Use these tools for Home Assistant system updates:
+
+| Tool | Purpose |
+|------|---------|
+| `get_available_updates` | Check what updates are available |
+| `get_addon_changelog` | View app changelog before updating |
+| `update_component` | Start an update (returns job_id) |
+| `get_update_progress` | Monitor update progress by job_id |
+| `get_running_jobs` | List all active Supervisor jobs |
+
+```
+# Check for updates
+get_available_updates()
+
+# Update Home Assistant Core
+update_component(component="core", backup=true)
+
+# Monitor the update
+get_update_progress(job_id="...")
+```
 
 ## Intelligence Features
 
@@ -136,4 +173,17 @@ Use these prompts for complex tasks:
 3. get_error_log(lines=100)                  -> Look for deprecation warnings
 4. Review their configuration
 5. Suggest updates based on breaking changes
+```
+
+### Update a device firmware (ESPHome, WLED, Zigbee, etc.)
+```
+1. watch_firmware_update(entity_id="update.device_firmware", start_update=true)
+   -> Single tool call handles everything: starts update, monitors progress, reports result
+```
+
+### Check and install system updates
+```
+1. get_available_updates()                   -> See what's available
+2. update_component(component="core")        -> Start update, get job_id
+3. get_update_progress(job_id="...")         -> Monitor progress
 ```
