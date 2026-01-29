@@ -2,10 +2,10 @@
 set -e
 
 # =============================================================================
-# HA OpenCode - Home Assistant Add-on - Main Entry Point
+# HA OpenCode - Home Assistant App - Main Entry Point
 # =============================================================================
 
-# Use bashio for proper Home Assistant add-on logging if available
+# Use bashio for proper Home Assistant app logging if available
 if command -v bashio &> /dev/null; then
     bashio::log.info "=============================================="
     bashio::log.info "  HA OpenCode for Home Assistant"

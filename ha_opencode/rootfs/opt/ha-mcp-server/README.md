@@ -198,7 +198,7 @@ ha-mcp enable
 
 | Variable | Description |
 |----------|-------------|
-| `SUPERVISOR_TOKEN` | Auto-provided by Home Assistant add-on |
+| `SUPERVISOR_TOKEN` | Auto-provided by Home Assistant app |
 
 ## Version History
 

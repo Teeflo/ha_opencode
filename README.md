@@ -1,4 +1,4 @@
-# Home Assistant Community Add-on: HA OpenCode
+# Home Assistant Community App: HA OpenCode
 
 [![GitHub Release][releases-shield]][releases]
 ![Project Stage][project-stage-shield]
@@ -63,7 +63,7 @@ To use the free tier, run `/connect` and select **OpenCode Zen** as your provide
 
 ## Warning
 
-This add-on has **read/write access** to your Home Assistant configuration
+This app has **read/write access** to your Home Assistant configuration
 directory. While the AI is instructed to ask for confirmation before making
 changes, please:
 
@@ -83,13 +83,13 @@ changes, please:
    https://github.com/magnusoverli/ha_opencode
    ```
 
-2. Find **"HA OpenCode"** in the add-on store and click **Install**.
+2. Find **"HA OpenCode"** in the app store and click **Install**.
 
-3. Start the add-on and click **Open Web UI** (or use the sidebar).
+3. Start the app and click **Open Web UI** (or use the sidebar).
 
 4. Run `opencode` and use `/connect` to configure your AI provider.
 
-[:books: Read the full add-on documentation][docs]
+[:books: Read the full app documentation][docs]
 
 ## Support
 

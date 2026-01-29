@@ -36,7 +36,7 @@
  * - Scene building assistance
  * 
  * Environment variables:
- * - SUPERVISOR_TOKEN: The Home Assistant Supervisor token (auto-provided in add-on)
+ * - SUPERVISOR_TOKEN: The Home Assistant Supervisor token (auto-provided in app)
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";

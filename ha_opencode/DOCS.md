@@ -14,7 +14,7 @@ HA OpenCode is an AI-powered coding agent that helps you edit and manage your Ho
 
 ## Configuration
 
-Configure the add-on from the **Configuration** tab in the add-on page.
+Configure the app from the **Configuration** tab in the app page.
 
 ### Feature Options
 
@@ -47,7 +47,7 @@ Configure the add-on from the **Configuration** tab in the add-on page.
 
 ## Getting Started
 
-### 1. Open the Add-on
+### 1. Open the App
 
 Click on **HA OpenCode** in the Home Assistant sidebar to open the terminal.
 
@@ -90,7 +90,7 @@ Add a template sensor for my energy usage
 
 ## Helper Commands
 
-The add-on includes helper commands:
+The app includes helper commands:
 
 | Command | Description |
 |---------|-------------|
@@ -106,7 +106,7 @@ The add-on includes helper commands:
 
 ## Home Assistant MCP Integration
 
-The add-on includes an enhanced MCP (Model Context Protocol) server that provides deep integration between OpenCode and Home Assistant. This is a comprehensive implementation featuring **Tools**, **Resources**, **Prompts**, and an **Intelligence Layer**.
+The app includes an enhanced MCP (Model Context Protocol) server that provides deep integration between OpenCode and Home Assistant. This is a comprehensive implementation featuring **Tools**, **Resources**, **Prompts**, and an **Intelligence Layer**.
 
 ### MCP Capabilities Overview
 
@@ -121,9 +121,9 @@ The add-on includes an enhanced MCP (Model Context Protocol) server that provide
 
 **Option 1: Via Configuration (Recommended)**
 
-1. Go to the add-on **Configuration** tab
+1. Go to the app **Configuration** tab
 2. Enable **"Enable MCP Home Assistant Integration"**
-3. Save and restart the add-on
+3. Save and restart the app
 
 **Option 2: Via Command Line**
 
@@ -382,7 +382,7 @@ Design a morning routine for 7 AM
 
 ## LSP Integration (Intelligent YAML Editing)
 
-The add-on includes a Language Server Protocol (LSP) server that provides intelligent editing features for Home Assistant YAML configuration files. This is **enabled by default** because it only reads data and doesn't modify anything.
+The app includes a Language Server Protocol (LSP) server that provides intelligent editing features for Home Assistant YAML configuration files. This is **enabled by default** because it only reads data and doesn't modify anything.
 
 ### What is LSP?
 
@@ -554,9 +554,9 @@ action:
 
 LSP is enabled by default. To disable it:
 
-1. Go to the add-on **Configuration** tab
+1. Go to the app **Configuration** tab
 2. Set **"Enable LSP Home Assistant Integration"** to `false`
-3. Restart the add-on
+3. Restart the app
 
 ### Technical Notes
 
@@ -580,7 +580,7 @@ OpenCode starts in the `/homeassistant` directory, which is your Home Assistant 
 
 ## Customizing AI Instructions (AGENTS.md)
 
-The add-on creates an `AGENTS.md` file in your Home Assistant config directory (`/homeassistant/AGENTS.md`) on first install. This file contains instructions that guide how OpenCode behaves when working with your Home Assistant setup.
+The app creates an `AGENTS.md` file in your Home Assistant config directory (`/homeassistant/AGENTS.md`) on first install. This file contains instructions that guide how OpenCode behaves when working with your Home Assistant setup.
 
 ### Default Instructions Include:
 
@@ -593,7 +593,7 @@ The add-on creates an `AGENTS.md` file in your Home Assistant config directory (
 
 You can edit `AGENTS.md` to add your own rules or context:
 
-1. Open **File Editor** (or VS Code Server addon)
+1. Open **File Editor** (or VS Code Server app)
 2. Navigate to `/config/AGENTS.md`
 3. Add your customizations
 
@@ -619,7 +619,7 @@ You can edit `AGENTS.md` to add your own rules or context:
 If you want to restore the default `AGENTS.md`:
 
 1. Delete or rename the existing file
-2. Restart the add-on
+2. Restart the app
 3. A fresh default will be created
 
 ## Tips
@@ -672,19 +672,19 @@ This returns a human-readable overview organized by domain, including any detect
 
 ## Data Storage
 
-Your OpenCode sessions and API credentials are stored in `/data/` within the add-on. This data:
+Your OpenCode sessions and API credentials are stored in `/data/` within the app. This data:
 
 - **Is backed up** when you create a Home Assistant backup
-- **Persists** across add-on restarts and updates
+- **Persists** across app restarts and updates
 - **Is private** to your Home Assistant instance
 
 ## Security Notes
 
-- This add-on has access to your Home Assistant configuration files (read/write)
-- This add-on can view system logs (Core, Supervisor, Host)
+- This app has access to your Home Assistant configuration files (read/write)
+- This app can view system logs (Core, Supervisor, Host)
 - When MCP is enabled, OpenCode can query entities and call services
 - Access is protected by Home Assistant authentication via ingress
-- Only users with access to the HA OpenCode panel can use this add-on
+- Only users with access to the HA OpenCode panel can use this app
 
 ## Troubleshooting
 
@@ -702,14 +702,14 @@ Check if you have enough memory. OpenCode requires at least 256MB of RAM, 512MB 
 
 1. Try refreshing the page
 2. Clear your browser cache
-3. Check the add-on logs in the Home Assistant Supervisor
+3. Check the app logs in the Home Assistant Supervisor
 
 ### MCP not working
 
 1. Make sure MCP is enabled: `ha-mcp status`
 2. Restart OpenCode after enabling MCP
 3. Test the connection: `ha-mcp test`
-4. Check that the add-on has API access (it should by default)
+4. Check that the app has API access (it should by default)
 
 ### Entity not found in MCP queries
 
@@ -733,4 +733,4 @@ After modifying configuration files, you may need to:
 
 ## License
 
-This add-on is open source under the MIT license.
+This app is released into the public domain under the Unlicense.

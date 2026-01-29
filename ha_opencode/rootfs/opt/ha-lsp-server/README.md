@@ -64,7 +64,7 @@ A Language Server Protocol (LSP) server for intelligent Home Assistant YAML conf
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `SUPERVISOR_TOKEN` | Yes* | Home Assistant Supervisor token. Auto-provided in add-on environment. |
+| `SUPERVISOR_TOKEN` | Yes* | Home Assistant Supervisor token. Auto-provided in app environment. |
 
 *Without SUPERVISOR_TOKEN, the LSP runs in limited mode with only YAML syntax validation.
 

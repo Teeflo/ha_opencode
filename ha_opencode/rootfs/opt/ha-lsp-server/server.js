@@ -15,7 +15,7 @@
  * - YAML validation for HA-specific configurations
  * 
  * REQUIREMENTS:
- * - SUPERVISOR_TOKEN environment variable (auto-provided in Home Assistant add-on)
+ * - SUPERVISOR_TOKEN environment variable (auto-provided in Home Assistant app)
  * - Home Assistant Supervisor API access
  * 
  * USAGE:

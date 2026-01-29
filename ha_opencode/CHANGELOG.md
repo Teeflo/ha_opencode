@@ -1,6 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.0.14
+
+**Terminology Update**
+
+- Renamed "add-on" to "app" throughout the project to align with Home Assistant 2026.1 rebranding
+  - Home Assistant now calls add-ons "apps" to better reflect that they are standalone applications running alongside Home Assistant
+  - Updated all documentation, comments, and user-facing strings
+
 ## 1.0.13
 
 **Bug Fixes**
@@ -62,7 +70,7 @@ All notable changes to this project will be documented in this file.
 
 **UI Improvements**
 
-- Updated add-on icon and logo images
+- Updated app icon and logo images
 
 ## 1.0.7
 
