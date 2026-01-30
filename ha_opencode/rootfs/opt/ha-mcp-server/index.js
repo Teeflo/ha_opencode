@@ -1782,25 +1782,17 @@ const TOOLS = [
   {
     name: "watch_firmware_update",
     title: "Watch Firmware Update Progress",
-    description: "Monitor a firmware update in real-time with visual progress tracking. Polls the update entity and provides a formatted timeline. For ESPHome, WLED, Zigbee coordinators, and other device updates.",
+    description: "Check firmware update status or start an update. Returns current state immediately (does not block). Call repeatedly to monitor progress. For ESPHome, WLED, Zigbee coordinators, and other device updates.",
     inputSchema: {
       type: "object",
       properties: {
         entity_id: {
           type: "string",
-          description: "The update entity to monitor (e.g., 'update.garage_sensor_firmware', 'update.wled_living_room_update')",
+          description: "The update entity to check (e.g., 'update.garage_sensor_firmware', 'update.wled_living_room_update')",
         },
         start_update: {
           type: "boolean",
-          description: "If true, initiate the update before monitoring. If false, just monitor an already-running update.",
-        },
-        poll_interval: {
-          type: "number",
-          description: "Seconds between status checks (default: 3, min: 1, max: 30)",
-        },
-        timeout: {
-          type: "number",
-          description: "Maximum seconds to wait for update to complete (default: 300 = 5 minutes)",
+          description: "If true, start the update. If false (default), just check current status.",
         },
       },
       required: ["entity_id"],
@@ -3133,7 +3125,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // === FIRMWARE UPDATE MONITORING ===
       case "watch_firmware_update": {
-        const { entity_id, start_update = false, poll_interval = 3, timeout = 300 } = args;
+        const { entity_id, start_update = false } = args;
         sendLog("info", "firmware-update", { action: "watch", entity_id, start_update });
         
         // Validate entity_id format
@@ -3141,20 +3133,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error(`Invalid entity_id: ${entity_id}. Must be an update entity (update.xxx)`);
         }
         
-        // Clamp poll interval and timeout
-        const interval = Math.max(1, Math.min(30, poll_interval)) * 1000;
-        const maxTime = Math.max(60, Math.min(1800, timeout)) * 1000; // 1 min to 30 min
-        
         const formatTime = (date) => date.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
-        const formatDuration = (ms) => {
-          const secs = Math.floor(ms / 1000);
-          if (secs < 60) return `${secs}s`;
-          const mins = Math.floor(secs / 60);
-          const remainSecs = secs % 60;
-          return `${mins}m ${remainSecs}s`;
-        };
         
-        // Get initial state
+        // Get current state
         let response = await callApi(`/states/${entity_id}`);
         if (!response.ok) {
           const errorText = await response.text();
@@ -3162,223 +3143,95 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
         
         let entityState = await response.json();
-        const initialVersion = entityState.attributes?.installed_version || "unknown";
-        const targetVersion = entityState.attributes?.latest_version || "unknown";
-        const deviceName = entityState.attributes?.friendly_name || entity_id.replace("update.", "");
+        const attrs = entityState.attributes || {};
+        const installedVersion = attrs.installed_version || "unknown";
+        const latestVersion = attrs.latest_version || "unknown";
+        const deviceName = attrs.friendly_name || entity_id.replace("update.", "");
+        const inProgress = attrs.in_progress === true;
+        const progress = attrs.update_percentage;
+        const currentState = entityState.state;
         
-        const timeline = [];
-        const startTime = new Date();
-        
-        timeline.push({
-          time: startTime,
-          event: "monitor_started",
-          message: `Started monitoring ${deviceName}`,
-          details: `Current: ${initialVersion} → Target: ${targetVersion}`,
-        });
-        
-        // Optionally start the update
-        if (start_update) {
-          // Check if update is available
-          if (entityState.state !== "on") {
-            throw new Error(`No update available for ${deviceName}. Current state: ${entityState.state}`);
-          }
-          
-          // Call the update service
-          const serviceResponse = await callApi("/services/update/install", {
-            method: "POST",
-            body: JSON.stringify({ entity_id }),
-          });
-          
-          if (!serviceResponse.ok) {
-            const errorText = await serviceResponse.text();
-            throw new Error(`Failed to start update: ${errorText}`);
-          }
-          
-          timeline.push({
-            time: new Date(),
-            event: "update_initiated",
-            message: "Update initiated",
-            details: "Sent install command to device",
-          });
-          
-          // Wait a moment for the update to start
-          await new Promise(r => setTimeout(r, 1000));
-        }
-        
-        // Poll for progress
-        let lastState = entityState.state;
-        let lastProgress = null;
-        let updateComplete = false;
-        let updateSuccess = null;
-        let finalVersion = initialVersion;
-        
-        const pollStart = Date.now();
-        
-        while (!updateComplete && (Date.now() - pollStart) < maxTime) {
-          await new Promise(r => setTimeout(r, interval));
-          
-          response = await callApi(`/states/${entity_id}`);
-          if (!response.ok) continue;
-          
-          entityState = await response.json();
-          const currentState = entityState.state;
-          const attrs = entityState.attributes || {};
-          const inProgress = attrs.in_progress === true;
-          const progress = attrs.update_percentage;
-          const currentVersion = attrs.installed_version || initialVersion;
-          
-          // Detect state changes
-          if (currentState !== lastState) {
-            if (inProgress) {
-              timeline.push({
-                time: new Date(),
-                event: "update_started",
-                message: "Update in progress",
-                details: "Device is updating firmware",
-              });
-            } else if (lastState === "on" && currentState === "off") {
-              // Update completed successfully
-              updateComplete = true;
-              updateSuccess = true;
-              finalVersion = currentVersion;
-              timeline.push({
-                time: new Date(),
-                event: "update_complete",
-                message: "Update completed successfully",
-                details: `Now running ${finalVersion}`,
-              });
-            } else if (currentState === "unavailable") {
-              timeline.push({
-                time: new Date(),
-                event: "device_rebooting",
-                message: "Device rebooting",
-                details: "Waiting for device to come back online...",
-              });
-            }
-            lastState = currentState;
-          }
-          
-          // Track progress changes (if percentage is reported)
-          if (progress !== null && progress !== lastProgress) {
-            timeline.push({
-              time: new Date(),
-              event: "progress",
-              message: `Progress: ${progress}%`,
-              details: null,
-            });
-            lastProgress = progress;
-          }
-          
-          // Check if device came back online after reboot
-          if (lastState === "unavailable" && currentState !== "unavailable") {
-            finalVersion = currentVersion;
-            if (currentVersion !== initialVersion) {
-              updateComplete = true;
-              updateSuccess = true;
-              timeline.push({
-                time: new Date(),
-                event: "device_online",
-                message: "Device back online",
-                details: `Updated to ${finalVersion}`,
-              });
-            }
-          }
-          
-          // Check for failure indicators
-          if (attrs.in_progress === false && lastProgress !== null && lastProgress < 100) {
-            // Progress stopped before completion
-            updateComplete = true;
-            updateSuccess = false;
-            timeline.push({
-              time: new Date(),
-              event: "update_failed",
-              message: "Update may have failed",
-              details: `Progress stopped at ${lastProgress}%`,
-            });
-          }
-        }
-        
-        const endTime = new Date();
-        const totalDuration = endTime - startTime;
-        
-        // Check for timeout
-        if (!updateComplete) {
-          timeline.push({
-            time: endTime,
-            event: "timeout",
-            message: "Monitoring timeout",
-            details: `No completion detected after ${formatDuration(totalDuration)}`,
-          });
-        }
-        
-        // Build the response
         let responseText = `# Firmware Update: ${deviceName}\n\n`;
+        responseText += `**Entity:** \`${entity_id}\`\n`;
+        responseText += `**Time:** ${formatTime(new Date())}\n\n`;
         
-        // Summary box
-        responseText += `## Summary\n\n`;
-        if (updateSuccess === true) {
-          responseText += `| Status | ✅ **Update Successful** |\n`;
-        } else if (updateSuccess === false) {
-          responseText += `| Status | ❌ **Update Failed** |\n`;
-        } else {
-          responseText += `| Status | ⏳ **Monitoring Ended** |\n`;
-        }
-        responseText += `|--------|------------------------|\n`;
-        responseText += `| Device | ${deviceName} |\n`;
-        responseText += `| Version Change | ${initialVersion} → ${finalVersion} |\n`;
-        responseText += `| Duration | ${formatDuration(totalDuration)} |\n`;
-        responseText += `| Entity | \`${entity_id}\` |\n\n`;
+        // Determine status and take action
+        let statusEmoji, statusText;
         
-        // Timeline
-        responseText += `## Timeline\n\n`;
-        responseText += `\`\`\`\n`;
-        
-        for (const entry of timeline) {
-          const timeStr = formatTime(entry.time);
-          const icon = {
-            monitor_started: "📡",
-            update_initiated: "🚀",
-            update_started: "⏳",
-            progress: "📊",
-            device_rebooting: "🔄",
-            device_online: "✨",
-            update_complete: "✅",
-            update_failed: "❌",
-            timeout: "⏰",
-          }[entry.event] || "•";
-          
-          responseText += `${timeStr}  ${icon}  ${entry.message}\n`;
-          if (entry.details) {
-            responseText += `           └─ ${entry.details}\n`;
+        if (inProgress) {
+          statusEmoji = "⏳";
+          statusText = "Update In Progress";
+          responseText += `## ${statusEmoji} ${statusText}\n\n`;
+          responseText += `| Field | Value |\n`;
+          responseText += `|-------|-------|\n`;
+          responseText += `| Installed Version | ${installedVersion} |\n`;
+          responseText += `| Target Version | ${latestVersion} |\n`;
+          if (progress !== null && progress !== undefined) {
+            const filled = Math.floor(progress / 5);
+            const empty = 20 - filled;
+            responseText += `| Progress | ${"█".repeat(filled)}${"░".repeat(empty)} ${progress}% |\n`;
+          } else {
+            responseText += `| Progress | Compiling/Installing (no percentage reported) |\n`;
           }
-        }
-        
-        responseText += `\`\`\`\n\n`;
-        
-        // Progress bar (if we tracked progress)
-        const progressEvents = timeline.filter(e => e.event === "progress");
-        if (progressEvents.length > 0) {
-          const finalProgress = updateSuccess ? 100 : (lastProgress || 0);
-          const filled = Math.floor(finalProgress / 5);
-          const empty = 20 - filled;
-          responseText += `## Progress\n\n`;
-          responseText += `\`[${"█".repeat(filled)}${"░".repeat(empty)}]\` ${finalProgress}%\n\n`;
-        }
-        
-        // Next steps or troubleshooting
-        if (updateSuccess === true) {
-          responseText += `## ✅ Success\n\n`;
-          responseText += `The firmware update completed successfully. The device is now running version **${finalVersion}**.\n`;
-        } else if (updateSuccess === false) {
-          responseText += `## ❌ Troubleshooting\n\n`;
-          responseText += `The update may have failed. Try these steps:\n`;
-          responseText += `- Check the device is still powered and connected\n`;
-          responseText += `- Look for device-specific error logs\n`;
-          responseText += `- Try the update again from the Home Assistant UI\n`;
+          responseText += `\n**The update is running.** Call this tool again in a few seconds to check progress.\n`;
+          
+        } else if (currentState === "unavailable") {
+          statusEmoji = "🔄";
+          statusText = "Device Rebooting";
+          responseText += `## ${statusEmoji} ${statusText}\n\n`;
+          responseText += `The device is currently unavailable - likely rebooting after firmware update.\n\n`;
+          responseText += `**Wait a minute and call this tool again** to check if the device comes back online.\n`;
+          
+        } else if (currentState === "off") {
+          statusEmoji = "✅";
+          statusText = "Up to Date";
+          responseText += `## ${statusEmoji} ${statusText}\n\n`;
+          responseText += `| Field | Value |\n`;
+          responseText += `|-------|-------|\n`;
+          responseText += `| Installed Version | ${installedVersion} |\n`;
+          responseText += `| Latest Version | ${latestVersion} |\n`;
+          responseText += `\nNo update available. The device is running the latest version.\n`;
+          
+        } else if (currentState === "on") {
+          // Update is available
+          if (start_update) {
+            // Start the update
+            const serviceResponse = await callApi("/services/update/install", {
+              method: "POST",
+              body: JSON.stringify({ entity_id }),
+            });
+            
+            if (!serviceResponse.ok) {
+              const errorText = await serviceResponse.text();
+              throw new Error(`Failed to start update: ${errorText}`);
+            }
+            
+            statusEmoji = "🚀";
+            statusText = "Update Started";
+            responseText += `## ${statusEmoji} ${statusText}\n\n`;
+            responseText += `| Field | Value |\n`;
+            responseText += `|-------|-------|\n`;
+            responseText += `| Current Version | ${installedVersion} |\n`;
+            responseText += `| Target Version | ${latestVersion} |\n`;
+            responseText += `\n**Update has been initiated!**\n\n`;
+            responseText += `The device will now download and install the firmware. This typically takes 1-5 minutes.\n\n`;
+            responseText += `**Call this tool again** (without \`start_update\`) to monitor progress.\n`;
+          } else {
+            statusEmoji = "⬆️";
+            statusText = "Update Available";
+            responseText += `## ${statusEmoji} ${statusText}\n\n`;
+            responseText += `| Field | Value |\n`;
+            responseText += `|-------|-------|\n`;
+            responseText += `| Installed Version | ${installedVersion} |\n`;
+            responseText += `| Available Version | ${latestVersion} |\n`;
+            responseText += `\nAn update is available but not yet started.\n\n`;
+            responseText += `**To start the update**, call this tool with \`start_update: true\`.\n`;
+          }
         } else {
-          responseText += `## ⏳ Update May Still Be Running\n\n`;
-          responseText += `The monitoring period ended but the update may still be in progress.\n`;
-          responseText += `Check the device status in Home Assistant or run this tool again to continue monitoring.\n`;
+          statusEmoji = "❓";
+          statusText = `Unknown State: ${currentState}`;
+          responseText += `## ${statusEmoji} ${statusText}\n\n`;
+          responseText += `The device is in an unexpected state. Check the Home Assistant UI for more details.\n`;
         }
         
         return makeCompatibleResponse({

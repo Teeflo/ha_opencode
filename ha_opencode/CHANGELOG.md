@@ -1,6 +1,15 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.1.5
+
+**Bug Fix: watch_firmware_update Timeout**
+
+- Fixed `watch_firmware_update` tool timing out before returning results
+- Tool now returns immediately with current status instead of blocking
+- Call the tool repeatedly to monitor progress (AI can poll as needed)
+- Removed unused `poll_interval` and `timeout` parameters
+
 ## 1.1.4
 
 **Bug Fix: Update Tools Not Available**
