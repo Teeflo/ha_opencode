@@ -132,10 +132,256 @@ These are the user-facing configuration files - the primary way to define Home A
 - `home-assistant_v2.db` - History database (use MCP `get_history`)
 - `home-assistant.log` - Logs (use MCP `get_error_log`)
 
+## YAML Style Guide (MANDATORY)
+
+All YAML written or modified MUST follow the official Home Assistant YAML Style Guide.
+Reference: https://developers.home-assistant.io/docs/documenting/yaml-style-guide/
+
+A Prettier formatter is configured for this environment and will auto-format files on save.
+However, Prettier only enforces a subset of the rules below. You are responsible for following
+ALL rules, especially those Prettier cannot enforce (marked with *).
+
+### Indentation
+
+2 spaces. Tabs are forbidden.
+
+```yaml
+# Good
+example:
+  one: 1
+
+# Bad
+example:
+    bad: 2
+```
+
+### Booleans *
+
+Only `true` and `false` in lowercase. Never use `Yes`, `No`, `On`, `Off`, `TRUE`, etc.
+
+```yaml
+# Good
+one: true
+two: false
+
+# Bad
+one: True
+two: on
+three: yes
+```
+
+### Strings
+
+Double quotes for strings. Single quotes are not allowed.
+
+```yaml
+# Good
+example: "Hi there!"
+
+# Bad
+example: 'Hi there!'
+```
+
+**Exceptions** (no quotes needed): entity IDs, area IDs, device IDs, platform types,
+trigger types, condition types, action names, device classes, event names, attribute names,
+and values from a fixed set of options (e.g., `mode`).
+
+```yaml
+# Good
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.living_room
+      area_id: living_room
+    data:
+      message: "Hello!"
+      transition: 10
+
+# Bad - don't quote entity IDs and action names
+actions:
+  - action: "light.turn_on"
+    target:
+      entity_id: "light.living_room"
+```
+
+### Sequences (Lists) *
+
+Use block style. Flow style `[1, 2, 3]` must not be used.
+Block sequences must be indented under their key.
+
+```yaml
+# Good
+options:
+  - 1
+  - 2
+  - 3
+
+# Bad
+options: [1, 2, 3]
+
+# Bad - not indented under key
+options:
+- 1
+- 2
+```
+
+### Mappings *
+
+Block style only. Flow style `{ key: val }` must not be used.
+
+```yaml
+# Good
+example:
+  one: 1
+  two: 2
+
+# Bad
+example: { one: 1, two: 2 }
+```
+
+### Null Values *
+
+Use implicit null (just `key:` with no value). Never use `null` or `~`.
+
+```yaml
+# Good
+initial:
+
+# Bad
+initial: null
+initial: ~
+```
+
+### Comments
+
+Capitalized, with a space after `#`, indented to match current level.
+
+```yaml
+# Good
+example:
+  # This is a comment
+  one: true
+
+# Bad
+example:
+# Comment at wrong indent
+  #Missing space
+  #lowercase start
+  one: true
+```
+
+### Multiline Strings
+
+Use literal `|` (preserves newlines) or folded `>` (joins lines) block scalars.
+Avoid `\n` in strings. Prefer no-chomp (`|`, `>`) unless you need strip (`|-`, `>-`).
+
+```yaml
+# Good
+message: |
+  Hello!
+  This is a multiline
+  notification message.
+
+# Good - folded
+description: >
+  This is a long description that
+  will be joined into a single line.
+
+# Bad
+message: "Hello!\nThis is a multiline\nnotification message.\n"
+```
+
+### Templates
+
+Double quotes outside, single quotes inside. Use `states()` and `state_attr()`
+helpers, not direct state object access. Split long templates across multiple lines.
+
+```yaml
+# Good
+value_template: "{{ states('sensor.temperature') }}"
+attribute_template: "{{ state_attr('climate.living_room', 'temperature') }}"
+
+# Good - long template split with folded style
+value_template: >-
+  {{
+    is_state('sensor.bedroom_co_status', 'Ok')
+    and is_state('sensor.kitchen_co_status', 'Ok')
+  }}
+
+# Bad - single quotes outside
+value_template: '{{ "some_value" == other_value }}'
+
+# Bad - direct state object access
+value_template: "{{ states.sensor.temperature.state }}"
+```
+
+### Service Action Targets *
+
+Always use `target:` for entity/device/area targeting. Do not put `entity_id` at
+the action level or inside `data:`.
+
+```yaml
+# Good
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.living_room
+
+# Bad
+actions:
+  - action: light.turn_on
+    entity_id: light.living_room
+
+# Bad
+actions:
+  - action: light.turn_on
+    data:
+      entity_id: light.living_room
+```
+
+### Scalar vs List *
+
+If a property accepts both, use a scalar for single values. Do not wrap a single
+value in a list. Do not use comma-separated strings.
+
+```yaml
+# Good
+entity_id: light.living_room
+entity_id:
+  - light.living_room
+  - light.office
+
+# Bad - single value in a list
+entity_id:
+  - light.living_room
+
+# Bad - comma separated
+entity_id: "light.living_room, light.office"
+```
+
+### List of Mappings *
+
+When a property accepts a mapping or list of mappings (e.g., `actions`, `conditions`),
+always use a list even for a single item.
+
+```yaml
+# Good
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.living_room
+
+# Bad
+actions:
+  action: light.turn_on
+  target:
+    entity_id: light.living_room
+```
+
 ## Core Competencies
 
 ### YAML Configuration
-- Write valid Home Assistant YAML with proper indentation (2 spaces)
+- Follow the YAML Style Guide above for ALL configuration changes
 - Use anchors (`&name`) and aliases (`*name`) for DRY configurations
 - Understand `!include`, `!include_dir_named`, `!include_dir_list`, `!include_dir_merge_named`, `!include_dir_merge_list`
 - Know when to use packages for organized configuration

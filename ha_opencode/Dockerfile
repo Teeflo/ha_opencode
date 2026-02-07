@@ -36,9 +36,10 @@ RUN ARCH=$([ "$BUILD_ARCH" = "aarch64" ] && echo "aarch64" || echo "x86_64") \
     && curl -fsSL "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${ARCH}" -o /usr/bin/ttyd \
     && chmod +x /usr/bin/ttyd
 
-# Install OpenCode globally
-# Note: Pin version in build.yaml args for reproducible builds
-RUN npm install -g opencode-ai@${OPENCODE_VERSION} \
+# Install OpenCode and Prettier globally
+# - OpenCode: AI coding agent (pin version in build.yaml for reproducible builds)
+# - Prettier: Code formatter for YAML files, configured for HA conventions
+RUN npm install -g opencode-ai@${OPENCODE_VERSION} prettier \
     && npm cache clean --force
 
 # Copy package.json files first for better layer caching

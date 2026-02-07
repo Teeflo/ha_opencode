@@ -29,6 +29,17 @@ if [ ! -f "/homeassistant/AGENTS.md" ]; then
 fi
 
 # ==============================================================================
+# Deploy Prettier config for HA YAML formatting (first install only)
+# Prettier auto-formats YAML files written by OpenCode to follow HA conventions
+# Users can customize .prettierrc.yaml to adjust formatting preferences
+# ==============================================================================
+
+if [ ! -f "/homeassistant/.prettierrc.yaml" ]; then
+    cp /opt/ha-mcp-server/.prettierrc.yaml /homeassistant/.prettierrc.yaml
+    bashio::log.info "Deployed default .prettierrc.yaml for HA YAML formatting"
+fi
+
+# ==============================================================================
 # Read configuration options
 # ==============================================================================
 
