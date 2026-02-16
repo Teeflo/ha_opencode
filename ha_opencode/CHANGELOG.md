@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## 1.3.1
+## 1.3.3
 
 **Architecture Refactor, CPU Compatibility, and Bug Fixes**
 
@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file.
 - Added CPU baseline detection for older processors without AVX2 support — the add-on now auto-detects CPU capabilities and selects the appropriate OpenCode binary (configurable via `cpu_mode`: auto/baseline/regular)
 - Added custom OpenCode configuration injection — power users can now paste a JSON config in the add-on settings to customize OpenCode behavior (providers, keybindings, etc.)
 - Fixed MCP `get_error_log` tool returning 404 errors by routing through the correct Supervisor proxy endpoint (`/core/api/error_log`)
+- Fixed init-opencode oneshot service failing to execute (absolute path in `up` file)
+- Fixed CPU auto-detection crashing on base image (replaced `grep -oP` with portable `awk`)
 - Terminal banner now displays the actual add-on version instead of hardcoded "v1.0"
 
 Inspired by work done in [okliam's fork](https://github.com/okliam). Thanks for exploring these ideas!
