@@ -65,6 +65,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Lowercase repository owner
+        id: repo_owner
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -73,8 +77,8 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/ha_opencode/${{ matrix.arch }}:${{ steps.version.outputs.version }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/ha_opencode/${{ matrix.arch }}:latest
+            ${{ env.REGISTRY }}/${{ steps.repo_owner.outputs.owner }}/ha_opencode/${{ matrix.arch }}:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ steps.repo_owner.outputs.owner }}/ha_opencode/${{ matrix.arch }}:latest
           build-args: |
             BUILD_FROM=${{ matrix.base_image }}
             BUILD_VERSION=${{ steps.version.outputs.version }}
